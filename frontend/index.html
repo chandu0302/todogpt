@@ -634,7 +634,7 @@
 
     const runErr = state && (state.__error__ || state.error);
     if (runErr){
-      const s = String(runErr);
+      const s = JSON.stringify(runErr);
       if (looksLikeQuota(s)) return { error:"Daily quota reached. Try again later, switch model, or enable billing." };
       return { error:"The agent hit an error and couldn't finish." };
     }
