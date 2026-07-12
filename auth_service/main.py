@@ -11,6 +11,7 @@ import db
 FRONTEND_ORIGIN = os.environ["FRONTEND_ORIGIN"]
 SESSION_TTL_DAYS = int(os.environ.get("SESSION_TTL_DAYS", "7"))
 COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "false").lower() == "true"
+COOKIE_SAMESITE = os.environ.get("COOKIE_SAMESITE", "lax")
 COOKIE_NAME = "session_token"
 
 app = FastAPI()
@@ -53,7 +54,7 @@ def _set_session_cookie(response: Response, token: str) -> None:
         key=COOKIE_NAME,
         value=token,
         httponly=True,
-        samesite="lax",
+        samesite=COOKIE_SAMESITE,
         secure=COOKIE_SECURE,
         path="/",
         max_age=SESSION_TTL_DAYS * 86400,
@@ -127,7 +128,7 @@ def logout(request: Request, response: Response):
         with db.get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM sessions WHERE token = %s", (token,))
-    response.delete_cookie(key=COOKIE_NAME, path="/", samesite="lax")
+    response.delete_cookie(key=COOKIE_NAME, path="/", samesite=COOKIE_SAMESITE)
     return {"ok": True}
 
 

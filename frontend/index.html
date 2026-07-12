@@ -450,8 +450,9 @@
   "use strict";
 
   const isLocal   = ["localhost", "127.0.0.1"].includes(location.hostname);
-  const API_BASE  = isLocal ? "http://localhost:8123" : "https://api.todogpt.com";
-  const AUTH_BASE = isLocal ? "http://localhost:8124" : "https://auth.todogpt.com";
+  // TODO: replace with your actual Render service URLs once deployed (step: Deploy to Render).
+  const API_BASE  = isLocal ? "http://localhost:8123" : "https://REPLACE-WITH-YOUR-LANGGRAPH-SERVICE.onrender.com";
+  const AUTH_BASE = isLocal ? "http://localhost:8124" : "https://REPLACE-WITH-YOUR-AUTH-SERVICE.onrender.com";
   const ASSISTANT  = "task_maistro";
   const RECURSION  = 8;
   const TIMEOUT_MS = 90000;
