@@ -12,8 +12,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project files
 COPY . .
 
-# Expose port 8000
-EXPOSE 8000
+# Expose the port langgraph dev actually listens on (see CMD below)
+EXPOSE 2024
 
 # Start LangGraph API server
 # The langgraph CLI automatically reads langgraph.json
