@@ -1,0 +1,11 @@
+langgraph
+langgraph-cli
+langgraph-api
+langchain-core>=1.2.28
+langchain-community
+langchain-openai>=1.1.14
+langchain-text-splitters>=1.1.2
+langchain-google-genai
+trustcall
+langsmith>=0.7.31
+aiohttp>=3.13.4

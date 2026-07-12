@@ -1,0 +1,914 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TodoGPT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  :root{
+    --ink:#14151A;
+    --surface:#1C1E26;
+    --surface-2:#222530;
+    --line:#2C2F3A;
+    --paper:#E8E6E1;
+    --muted:#6B6F7B;
+    --muted-2:#8A8E9A;
+    --accent:#F0A93B;
+    --accent-dim:#F0A93B22;
+    --user-bubble:#262935;
+    --danger:#E0684B;
+    --ok:#5FB98B;
+    --radius:16px;
+    --maxw:820px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #1b1d27 0%, transparent 60%),
+      var(--ink);
+    color:var(--paper);
+    font-family:'Inter',system-ui,sans-serif;
+    font-size:15.5px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    height:100dvh;
+    overflow:hidden;
+  }
+
+  /* ---------- Header ---------- */
+  header{
+    flex:0 0 auto;
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(28,30,38,.9), rgba(20,21,26,.7));
+    backdrop-filter:blur(12px);
+  }
+  .head-inner{
+    max-width:var(--maxw);
+    margin:0 auto;
+    padding:18px 24px 16px;
+    display:flex;
+    align-items:center;
+    gap:16px;
+  }
+  .brand{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0}
+  .brand h1{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:26px;
+    letter-spacing:-.01em;
+    line-height:1.05;
+  }
+  .brand h1 .baton{color:var(--accent)}
+  .brand .tag{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  .status{
+    display:flex;align-items:center;gap:8px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;letter-spacing:.04em;
+    color:var(--muted-2);
+    white-space:nowrap;
+  }
+  .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--muted);
+    box-shadow:0 0 0 0 transparent;
+    transition:background .3s, box-shadow .3s;
+  }
+  .dot.ok{background:var(--ok);box-shadow:0 0 10px 1px #5FB98B66}
+  .dot.bad{background:var(--danger);box-shadow:0 0 10px 1px #E0684B66}
+  /* ---------- Chat scroll ---------- */
+  main{
+    flex:1 1 auto;
+    overflow-y:auto;
+    scroll-behavior:smooth;
+  }
+  .thread{
+    max-width:var(--maxw);
+    margin:0 auto;
+    padding:28px 24px 12px;
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+  }
+
+  /* Empty state */
+  .empty{
+    margin:auto;
+    text-align:center;
+    padding:64px 24px;
+    color:var(--muted-2);
+    max-width:520px;
+  }
+  .empty .mark{
+    font-family:'Fraunces',serif;
+    font-size:64px;
+    color:var(--accent);
+    line-height:1;
+    margin-bottom:20px;
+  }
+  .empty h2{
+    font-family:'Fraunces',serif;
+    font-weight:400;
+    font-size:22px;
+    color:var(--paper);
+    margin-bottom:10px;
+  }
+  .empty p{font-size:14.5px;margin-bottom:22px}
+  .chips{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+  .chip{
+    font-size:13px;
+    color:var(--muted-2);
+    border:1px solid var(--line);
+    padding:8px 14px;border-radius:999px;
+    cursor:pointer;transition:all .18s;
+    background:var(--surface);
+  }
+  .chip:hover{color:var(--paper);border-color:var(--accent);background:var(--accent-dim)}
+
+  /* ---------- Messages ---------- */
+  .msg{display:flex;gap:12px;max-width:100%;animation:rise .32s cubic-bezier(.2,.7,.2,1)}
+  @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .msg .avatar{
+    flex:0 0 auto;width:30px;height:30px;border-radius:9px;
+    display:grid;place-items:center;
+    font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;
+    margin-top:2px;
+  }
+  .msg.agent .avatar{background:var(--accent-dim);color:var(--accent);border:1px solid #F0A93B33}
+  .msg.user{flex-direction:row-reverse}
+  .msg.user .avatar{background:var(--surface-2);color:var(--muted-2);border:1px solid var(--line)}
+  .bubble{
+    padding:13px 16px;border-radius:14px;
+    max-width:calc(100% - 54px);
+    word-wrap:break-word;overflow-wrap:break-word;
+  }
+  .msg.agent .bubble{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-top-left-radius:5px;
+  }
+  .msg.user .bubble{
+    background:var(--user-bubble);
+    border:1px solid #30333F;
+    border-top-right-radius:5px;
+  }
+  /* markdown inside bubbles */
+  .bubble p{margin:0 0 8px}
+  .bubble p:last-child{margin-bottom:0}
+  .bubble ul,.bubble ol{margin:6px 0 8px;padding-left:20px}
+  .bubble li{margin:3px 0}
+  .bubble strong{color:#fff;font-weight:600}
+  .bubble code{
+    font-family:'JetBrains Mono',monospace;font-size:.88em;
+    background:#0f1014;border:1px solid var(--line);
+    padding:1px 6px;border-radius:6px;
+  }
+  .bubble pre{
+    background:#0f1014;border:1px solid var(--line);
+    padding:12px 14px;border-radius:10px;overflow-x:auto;margin:8px 0;
+  }
+  .bubble pre code{background:none;border:none;padding:0}
+  .bubble a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+
+  /* system / error line */
+  .msg.system .bubble{
+    background:transparent;border:1px dashed #4a3320;
+    color:#E7B072;font-size:14px;
+    border-radius:12px;
+  }
+  .msg.system .avatar{background:transparent;color:#E7B072;border:1px solid #4a3320}
+
+  /* typing indicator */
+  .typing{display:flex;gap:5px;align-items:center;padding:4px 2px}
+  .typing span{
+    width:7px;height:7px;border-radius:50%;background:var(--muted-2);
+    animation:blink 1.3s infinite ease-in-out both;
+  }
+  .typing span:nth-child(2){animation-delay:.18s}
+  .typing span:nth-child(3){animation-delay:.36s}
+  @keyframes blink{0%,80%,100%{opacity:.25;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+
+  /* ---------- Composer ---------- */
+  footer{
+    flex:0 0 auto;
+    border-top:1px solid var(--line);
+    background:linear-gradient(0deg, rgba(20,21,26,.95), rgba(28,30,38,.7));
+    backdrop-filter:blur(12px);
+  }
+  .composer{
+    max-width:var(--maxw);
+    margin:0 auto;
+    padding:14px 24px 18px;
+    display:flex;gap:12px;align-items:flex-end;
+  }
+  .field{
+    flex:1;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:11px 14px;
+    display:flex;align-items:flex-end;
+    transition:border-color .18s, box-shadow .18s;
+  }
+  .field:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
+  textarea{
+    flex:1;background:none;border:none;outline:none;resize:none;
+    color:var(--paper);font-family:'Inter',sans-serif;font-size:15.5px;
+    line-height:1.5;max-height:160px;
+  }
+  textarea::placeholder{color:var(--muted)}
+  .send{
+    flex:0 0 auto;width:44px;height:44px;border-radius:12px;
+    border:none;cursor:pointer;
+    background:var(--accent);color:#1a1206;
+    display:grid;place-items:center;
+    transition:transform .15s, opacity .15s, background .18s;
+  }
+  .send:hover:not(:disabled){transform:translateY(-1px) scale(1.03)}
+  .send:active:not(:disabled){transform:scale(.96)}
+  .send:disabled{opacity:.4;cursor:not-allowed}
+  .send svg{width:20px;height:20px}
+  .hint{
+    max-width:var(--maxw);margin:0 auto;padding:0 24px 12px;
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;
+    color:var(--muted);letter-spacing:.03em;
+    display:flex;justify-content:space-between;gap:12px;
+  }
+  .hint .thread-id{color:var(--muted-2)}
+
+  /* scrollbar */
+  main::-webkit-scrollbar{width:10px}
+  main::-webkit-scrollbar-thumb{background:#2a2d38;border-radius:8px;border:3px solid var(--ink)}
+  main::-webkit-scrollbar-thumb:hover{background:#363a47}
+
+  /* ---------- Auth screen ---------- */
+  #authScreen{
+    height:100dvh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  #authScreen[hidden]{display:none}
+  .auth-card{
+    width:100%;max-width:360px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:32px 28px;
+  }
+  .auth-card .brand{align-items:center;text-align:center;margin-bottom:24px}
+  .auth-form{display:flex;flex-direction:column;gap:14px}
+  .auth-form[hidden]{display:none}
+  .auth-form label{
+    display:flex;flex-direction:column;gap:6px;
+    font-size:12px;letter-spacing:.03em;color:var(--muted-2);
+    font-family:'JetBrains Mono',monospace;text-transform:uppercase;
+  }
+  .auth-form input{
+    font-family:'Inter',sans-serif;font-size:14.5px;
+    background:var(--surface-2);border:1px solid var(--line);border-radius:10px;
+    padding:10px 12px;color:var(--paper);outline:none;
+    transition:border-color .18s, box-shadow .18s;
+  }
+  .auth-form input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
+  .auth-submit{
+    margin-top:4px;
+    background:var(--accent);color:#1a1206;border:none;border-radius:10px;
+    padding:11px 14px;font-family:'Inter',sans-serif;font-size:14.5px;font-weight:600;
+    cursor:pointer;transition:transform .15s, opacity .15s;
+  }
+  .auth-submit:hover:not(:disabled){transform:translateY(-1px)}
+  .auth-submit:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .auth-error{
+    font-size:13px;color:#E7B072;background:transparent;
+    border:1px dashed #4a3320;border-radius:10px;padding:8px 10px;
+  }
+  .auth-switch{font-size:13px;color:var(--muted-2);text-align:center;margin-top:4px}
+  .auth-switch a{color:var(--accent);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+
+  /* ---------- App shell / sidebar ---------- */
+  #appScreen{height:100dvh}
+  .app-shell{display:flex;height:100%}
+  .chat-pane{flex:1;display:flex;flex-direction:column;height:100%;overflow:hidden;min-width:0}
+  #sidebar{
+    flex:0 0 260px;width:260px;
+    background:var(--surface);border-right:1px solid var(--line);
+    display:flex;flex-direction:column;height:100%;
+  }
+  .sidebar-new{
+    margin:16px;
+    font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.03em;
+    color:var(--paper);background:var(--surface-2);border:1px solid var(--line);
+    border-radius:10px;padding:10px 12px;cursor:pointer;transition:all .18s;
+  }
+  .sidebar-new:hover{border-color:var(--accent);background:var(--accent-dim)}
+  .thread-list{flex:1;overflow-y:auto;padding:0 10px;display:flex;flex-direction:column;gap:4px}
+  .thread-item{
+    padding:10px 12px;border-radius:9px;cursor:pointer;
+    font-size:13px;color:var(--muted-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    transition:background .15s, color .15s;
+  }
+  .thread-item:hover{background:var(--surface-2);color:var(--paper)}
+  .thread-item.active{background:var(--accent-dim);color:var(--paper)}
+  .thread-empty{padding:10px 12px;font-size:12.5px;color:var(--muted)}
+  .sidebar-bottom{
+    border-top:1px solid var(--line);
+    padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;
+  }
+  .sidebar-user{
+    font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted-2);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .logout-btn{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.03em;
+    color:var(--muted-2);background:transparent;border:1px solid var(--line);
+    border-radius:9px;padding:6px 10px;cursor:pointer;transition:all .18s;flex:0 0 auto;
+  }
+  .logout-btn:hover{color:var(--danger);border-color:var(--danger)}
+
+  @media (max-width:600px){
+    .head-inner{padding:14px 16px}
+    .brand h1{font-size:22px}
+    .thread{padding:20px 16px 8px}
+    .composer{padding:12px 16px 14px}
+    .hint{padding:0 16px 10px}
+    .status .txt{display:none}
+    #sidebar{flex-basis:180px;width:180px}
+    .thread-item{font-size:12px}
+    .sidebar-new{margin:12px;padding:9px 10px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+  }
+</style>
+</head>
+<body>
+  <div id="authScreen">
+    <div class="auth-card">
+      <div class="brand">
+        <h1>Todo<span class="baton">·</span>GPT</h1>
+        <span class="tag">long-term memory · todo agent</span>
+      </div>
+
+      <form id="loginForm" class="auth-form">
+        <label>Username
+          <input id="loginUsername" type="text" autocomplete="username" required />
+        </label>
+        <label>Password
+          <input id="loginPassword" type="password" autocomplete="current-password" required />
+        </label>
+        <div class="auth-error" id="loginError" hidden></div>
+        <button type="submit" class="auth-submit" id="loginSubmit">Log in</button>
+        <p class="auth-switch">No account? <a id="toRegister">Register</a></p>
+      </form>
+
+      <form id="registerForm" class="auth-form" hidden>
+        <label>Username
+          <input id="registerUsername" type="text" autocomplete="username" required minlength="3" maxlength="32" />
+        </label>
+        <label>Password
+          <input id="registerPassword" type="password" autocomplete="new-password" required minlength="8" />
+        </label>
+        <div class="auth-error" id="registerError" hidden></div>
+        <button type="submit" class="auth-submit" id="registerSubmit">Create account</button>
+        <p class="auth-switch">Have an account? <a id="toLogin">Log in</a></p>
+      </form>
+    </div>
+  </div>
+
+  <div id="appScreen" hidden>
+    <div class="app-shell">
+      <aside id="sidebar">
+        <button class="sidebar-new" id="sidebarNewBtn">+ New chat</button>
+        <div class="thread-list" id="threadList"></div>
+        <div class="sidebar-bottom">
+          <span class="sidebar-user" id="sidebarUser"></span>
+          <button class="logout-btn" id="logoutBtn" title="Log out">logout</button>
+        </div>
+      </aside>
+
+      <div class="chat-pane">
+        <header>
+          <div class="head-inner">
+            <div class="brand">
+              <h1>Todo<span class="baton">·</span>GPT</h1>
+              <span class="tag">long-term memory · todo agent</span>
+            </div>
+            <div class="status">
+              <span class="dot" id="dot"></span>
+              <span class="txt" id="statusTxt">connecting</span>
+            </div>
+          </div>
+        </header>
+
+        <main id="main">
+          <div class="thread" id="thread">
+            <div class="empty" id="empty">
+              <div class="mark">·</div>
+              <h2>TodoGPT is listening</h2>
+              <p>Tell it what you're working on, when it's due, or ask what's on your plate. It remembers across the conversation.</p>
+              <div class="chips">
+                <div class="chip" data-send="I'm Chandu, a CS student in Hyderabad.">Introduce yourself</div>
+                <div class="chip" data-send="Add a task: finish the LangGraph demo by Friday, high priority.">Add a task</div>
+                <div class="chip" data-send="What's on my todo list?">Review todos</div>
+              </div>
+            </div>
+          </div>
+        </main>
+
+        <footer>
+          <div class="composer">
+            <div class="field">
+              <textarea id="input" rows="1" placeholder="Message TodoGPT…" autocomplete="off"></textarea>
+            </div>
+            <button class="send" id="send" disabled aria-label="Send message">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="6 11 12 5 18 11"/></svg>
+            </button>
+          </div>
+          <div class="hint">
+            <span>Enter to send · Shift+Enter for newline</span>
+            <span class="thread-id" id="threadHint">no thread</span>
+          </div>
+        </footer>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+
+  const isLocal   = ["localhost", "127.0.0.1"].includes(location.hostname);
+  const API_BASE  = isLocal ? "http://localhost:8123" : "https://api.todogpt.com";
+  const AUTH_BASE = isLocal ? "http://localhost:8124" : "https://auth.todogpt.com";
+  const ASSISTANT  = "task_maistro";
+  const RECURSION  = 8;
+  const TIMEOUT_MS = 90000;
+
+  let threadId    = null;
+  let sending     = false;
+  let currentUser = null;
+  let threads     = [];
+
+  const el = {
+    authScreen:       document.getElementById("authScreen"),
+    appScreen:        document.getElementById("appScreen"),
+    loginForm:        document.getElementById("loginForm"),
+    loginUsername:    document.getElementById("loginUsername"),
+    loginPassword:    document.getElementById("loginPassword"),
+    loginError:       document.getElementById("loginError"),
+    loginSubmit:      document.getElementById("loginSubmit"),
+    toRegister:       document.getElementById("toRegister"),
+    registerForm:     document.getElementById("registerForm"),
+    registerUsername: document.getElementById("registerUsername"),
+    registerPassword: document.getElementById("registerPassword"),
+    registerError:    document.getElementById("registerError"),
+    registerSubmit:   document.getElementById("registerSubmit"),
+    toLogin:          document.getElementById("toLogin"),
+
+    sidebarNewBtn: document.getElementById("sidebarNewBtn"),
+    threadList:    document.getElementById("threadList"),
+    sidebarUser:   document.getElementById("sidebarUser"),
+    logoutBtn:     document.getElementById("logoutBtn"),
+
+    main:      document.getElementById("main"),
+    thread:    document.getElementById("thread"),
+    empty:     document.getElementById("empty"),
+    input:     document.getElementById("input"),
+    send:      document.getElementById("send"),
+    dot:       document.getElementById("dot"),
+    statusTxt: document.getElementById("statusTxt"),
+    threadHint:document.getElementById("threadHint"),
+  };
+
+  marked.setOptions({ breaks:true, gfm:true });
+
+  // ---------- helpers ----------
+  function scrollDown(){ el.main.scrollTop = el.main.scrollHeight; }
+
+  function removeEmpty(){
+    if (el.empty){ el.empty.remove(); el.empty = null; }
+  }
+
+  function addMessage(role, text, opts={}){
+    removeEmpty();
+    const wrap = document.createElement("div");
+    wrap.className = "msg " + role;
+
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+    avatar.textContent = role === "user" ? "you" : role === "system" ? "!" : "TG";
+
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    if (opts.html){ bubble.innerHTML = opts.html; }
+    else if (role === "agent"){ bubble.innerHTML = marked.parse(text); }
+    else { bubble.textContent = text; }
+
+    wrap.appendChild(avatar);
+    wrap.appendChild(bubble);
+    el.thread.appendChild(wrap);
+    scrollDown();
+    return { wrap, bubble };
+  }
+
+  function showTyping(){
+    const ref = addMessage("agent", "", {
+      html:'<div class="typing"><span></span><span></span><span></span></div>'
+    });
+    return ref;
+  }
+
+  function setStatus(state){ // "ok" | "bad" | "connecting"
+    el.dot.classList.remove("ok","bad");
+    if (state === "ok"){ el.dot.classList.add("ok"); el.statusTxt.textContent = "connected"; }
+    else if (state === "bad"){ el.dot.classList.add("bad"); el.statusTxt.textContent = "offline"; }
+    else { el.statusTxt.textContent = "connecting"; }
+  }
+
+  function looksLikeQuota(s){
+    s = (s||"").toLowerCase();
+    return ["429","quota","resource_exhausted","rate limit","exceeded"].some(k=>s.includes(k));
+  }
+
+  async function fetchWithTimeout(url, options, ms){
+    const ctrl = new AbortController();
+    const t = setTimeout(()=>ctrl.abort(), ms);
+    try { return await fetch(url, {...options, signal:ctrl.signal}); }
+    finally { clearTimeout(t); }
+  }
+
+  // ---------- API ----------
+  async function ping(){
+    try {
+      const r = await fetchWithTimeout(API_BASE + "/docs", {}, 4000);
+      setStatus(r.ok ? "ok" : "bad");
+    } catch { setStatus("bad"); }
+  }
+
+  async function ensureThread(){
+    if (threadId) return threadId;
+    const r = await fetchWithTimeout(API_BASE + "/threads", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ metadata:{ user_id: currentUser } })
+    }, 10000);
+    if (!r.ok) throw new Error("thread " + r.status);
+    const data = await r.json();
+    threadId = data.thread_id;
+    el.threadHint.textContent = "thread " + String(threadId).slice(0,8);
+    threads.unshift(data);
+    renderSidebar();
+    return threadId;
+  }
+
+  // content can be a plain string, or a list of blocks like
+  // [{ type:"text", text:"...", extras:{ signature:"..." } }, { type:"tool_use", ... }]
+  // — only the text of "text" blocks is ever shown.
+  function extractText(content){
+    if (typeof content === "string") return content;
+    if (Array.isArray(content)){
+      return content
+        .filter(p => p && typeof p === "object" && typeof p.text === "string")
+        .map(p => p.text)
+        .join("")
+        .trim();
+    }
+    return "";
+  }
+
+  function extractReply(state){
+    const msgs = (state && state.messages) || [];
+    for (let i = msgs.length - 1; i >= 0; i--){
+      const m = msgs[i];
+      const type = m.type || m.role;
+      if (type === "ai" || type === "assistant"){
+        const text = extractText(m.content);
+        if (text.length > 0) return text;
+      }
+    }
+    return "(no reply)";
+  }
+
+  async function runTurn(text){
+    await ensureThread();
+    const body = {
+      assistant_id: ASSISTANT,
+      input:{ messages:[{ type:"human", content:text }] },
+      config:{ recursion_limit: RECURSION, configurable:{ user_id: currentUser } }
+    };
+    let r;
+    try {
+      r = await fetchWithTimeout(
+        API_BASE + "/threads/" + threadId + "/runs/wait",
+        { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) },
+        TIMEOUT_MS
+      );
+    } catch(err){
+      if (err.name === "AbortError")
+        return { error:"The agent took too long — it may be rate-limited. Try again shortly." };
+      return { error:"Can't reach the backend. Is `docker compose up` running?" };
+    }
+
+    if (r.status === 429) return { error:"Daily quota reached. Try again later, switch model, or enable billing." };
+    if (!r.ok){
+      const t = await r.text().catch(()=> "");
+      if (looksLikeQuota(t)) return { error:"Daily quota reached. Try again later, switch model, or enable billing." };
+      return { error:"Backend returned " + r.status + ". Try again in a moment." };
+    }
+
+    let state;
+    try { state = await r.json(); }
+    catch { return { error:"Unreadable response from the agent." }; }
+
+    const runErr = state && (state.__error__ || state.error);
+    if (runErr){
+      const s = String(runErr);
+      if (looksLikeQuota(s)) return { error:"Daily quota reached. Try again later, switch model, or enable billing." };
+      return { error:"The agent hit an error and couldn't finish." };
+    }
+    return { reply: extractReply(state) };
+  }
+
+  // ---------- Auth ----------
+  function showAuth(which){
+    el.appScreen.hidden = true;
+    el.authScreen.hidden = false;
+    el.loginError.hidden = true;
+    el.registerError.hidden = true;
+    if (which === "register"){
+      el.loginForm.hidden = true;
+      el.registerForm.hidden = false;
+      el.registerUsername.focus();
+    } else {
+      el.registerForm.hidden = true;
+      el.loginForm.hidden = false;
+      el.loginUsername.focus();
+    }
+  }
+
+  function showApp(){
+    el.authScreen.hidden = true;
+    el.appScreen.hidden = false;
+    el.sidebarUser.textContent = currentUser;
+    el.input.focus();
+  }
+
+  async function checkSession(){
+    try {
+      const r = await fetchWithTimeout(AUTH_BASE + "/me", { credentials:"include" }, 8000);
+      if (!r.ok){ showAuth("login"); return; }
+      const data = await r.json();
+      currentUser = data.username;
+      showApp();
+      loadThreadList();
+    } catch {
+      showAuth("login");
+    }
+  }
+
+  async function authRequest(path, username, password){
+    const r = await fetchWithTimeout(AUTH_BASE + path, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      credentials:"include",
+      body: JSON.stringify({ username, password })
+    }, 10000);
+    let data = {};
+    try { data = await r.json(); } catch {}
+    if (!r.ok) throw new Error(data.detail || ("Request failed (" + r.status + ")"));
+    return data;
+  }
+
+  async function login(username, password){
+    const data = await authRequest("/login", username, password);
+    currentUser = data.username;
+    showApp();
+    loadThreadList();
+  }
+
+  async function register(username, password){
+    const data = await authRequest("/register", username, password);
+    currentUser = data.username;
+    showApp();
+    loadThreadList();
+  }
+
+  async function logout(){
+    try {
+      await fetchWithTimeout(AUTH_BASE + "/logout", { method:"POST", credentials:"include" }, 8000);
+    } catch { /* ignore — we still clear client state below */ }
+    currentUser = null;
+    threads = [];
+    threadId = null;
+    el.thread.innerHTML = "";
+    el.empty = null;
+    showAuth("login");
+  }
+
+  // ---------- Sidebar / thread list ----------
+  async function loadThreadList(){
+    try {
+      const r = await fetchWithTimeout(API_BASE + "/threads/search", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          metadata:{ user_id: currentUser },
+          limit:50,
+          sort_by:"created_at",
+          sort_order:"desc"
+        })
+      }, 10000);
+      threads = r.ok ? await r.json() : [];
+    } catch {
+      threads = [];
+    }
+    renderSidebar();
+  }
+
+  function threadPreview(t){
+    const msgs = (t.values && t.values.messages) || [];
+    for (let i = msgs.length - 1; i >= 0; i--){
+      const text = extractText(msgs[i].content);
+      if (text) return text.slice(0, 48);
+    }
+    return "New conversation";
+  }
+
+  function renderSidebar(){
+    el.threadList.innerHTML = "";
+    if (!threads.length){
+      const e = document.createElement("div");
+      e.className = "thread-empty";
+      e.textContent = "No conversations yet";
+      el.threadList.appendChild(e);
+      return;
+    }
+    threads.forEach(t => {
+      const item = document.createElement("div");
+      item.className = "thread-item" + (t.thread_id === threadId ? " active" : "");
+      item.textContent = threadPreview(t);
+      item.title = item.textContent;
+      item.addEventListener("click", () => selectThread(t.thread_id));
+      el.threadList.appendChild(item);
+    });
+  }
+
+  function upsertLocalThreadPreview(id, humanText, aiText){
+    let t = threads.find(x => x.thread_id === id);
+    if (!t){
+      t = { thread_id: id, values:{ messages:[] } };
+      threads.unshift(t);
+    }
+    if (!t.values || !Array.isArray(t.values.messages)) t.values = { messages: [] };
+    t.values.messages.push({ type:"human", content: humanText });
+    t.values.messages.push({ type:"ai", content: aiText });
+  }
+
+  function selectThread(id){
+    const t = threads.find(x => x.thread_id === id);
+    if (!t || id === threadId) return;
+    threadId = id;
+    el.threadHint.textContent = "thread " + String(id).slice(0,8);
+    el.thread.innerHTML = "";
+    el.empty = null;
+
+    const msgs = (t.values && t.values.messages) || [];
+    let any = false;
+    msgs.forEach(m => {
+      const type = m.type || m.role;
+      const text = extractText(m.content);
+      if (!text) return;
+      if (type === "human" || type === "user"){ addMessage("user", text); any = true; }
+      else if (type === "ai" || type === "assistant"){ addMessage("agent", text); any = true; }
+    });
+    if (!any){
+      const e = document.createElement("div");
+      e.className = "empty";
+      e.innerHTML = '<div class="mark">·</div><h2>Empty conversation</h2><p>Say something to get started.</p>';
+      el.thread.appendChild(e);
+      el.empty = e;
+    }
+    renderSidebar();
+  }
+
+  // ---------- interaction ----------
+  function autoGrow(){
+    el.input.style.height = "auto";
+    el.input.style.height = Math.min(el.input.scrollHeight, 160) + "px";
+    el.send.disabled = sending || el.input.value.trim() === "";
+  }
+
+  async function submit(){
+    const text = el.input.value.trim();
+    if (!text || sending) return;
+    sending = true;
+    el.send.disabled = true;
+
+    addMessage("user", text);
+    el.input.value = "";
+    autoGrow();
+
+    const typing = showTyping();
+    const res = await runTurn(text);
+    typing.wrap.remove();
+
+    if (res.error){ addMessage("system", res.error); }
+    else {
+      addMessage("agent", res.reply);
+      // Updated optimistically from what we already have in hand — a fresh
+      // /threads/search right after /runs/wait can still race the server's
+      // own checkpoint write and return stale (pre-reply) thread state.
+      upsertLocalThreadPreview(threadId, text, res.reply);
+      renderSidebar();
+    }
+
+    sending = false;
+    autoGrow();
+    el.input.focus();
+  }
+
+  function newConversation(){
+    threadId = null;
+    el.thread.innerHTML = "";
+    el.threadHint.textContent = "no thread";
+    const e = document.createElement("div");
+    e.className = "empty";
+    e.innerHTML = document.getElementById("empty") ? "" : "";
+    // rebuild simple empty state
+    e.innerHTML = '<div class="mark">·</div>'+
+      '<h2>Fresh conversation</h2>'+
+      '<p>Previous context is cleared. What would you like to work on?</p>';
+    el.thread.appendChild(e);
+    el.empty = e;
+    el.input.focus();
+    renderSidebar();
+  }
+
+  // events
+  el.input.addEventListener("input", autoGrow);
+  el.input.addEventListener("keydown", (ev)=>{
+    if (ev.key === "Enter" && !ev.shiftKey){ ev.preventDefault(); submit(); }
+  });
+  el.send.addEventListener("click", submit);
+  el.sidebarNewBtn.addEventListener("click", newConversation);
+  el.logoutBtn.addEventListener("click", logout);
+  document.addEventListener("click", (ev)=>{
+    const chip = ev.target.closest(".chip");
+    if (chip && chip.dataset.send){
+      el.input.value = chip.dataset.send;
+      autoGrow();
+      submit();
+    }
+  });
+
+  el.loginForm.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    el.loginError.hidden = true;
+    el.loginSubmit.disabled = true;
+    try {
+      await login(el.loginUsername.value.trim(), el.loginPassword.value);
+    } catch(err){
+      el.loginError.textContent = err.message;
+      el.loginError.hidden = false;
+    } finally {
+      el.loginSubmit.disabled = false;
+    }
+  });
+
+  el.registerForm.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    el.registerError.hidden = true;
+    el.registerSubmit.disabled = true;
+    try {
+      await register(el.registerUsername.value.trim(), el.registerPassword.value);
+    } catch(err){
+      el.registerError.textContent = err.message;
+      el.registerError.hidden = false;
+    } finally {
+      el.registerSubmit.disabled = false;
+    }
+  });
+
+  el.toRegister.addEventListener("click", (ev) => { ev.preventDefault(); showAuth("register"); });
+  el.toLogin.addEventListener("click", (ev) => { ev.preventDefault(); showAuth("login"); });
+
+  // boot
+  ping();
+  setInterval(ping, 15000);
+  checkSession();
+})();
+</script>
+</body>
+</html>
