@@ -39,7 +39,7 @@ own checkpoint/store tables (created automatically by `langgraph`).
 | [configuration.py](configuration.py) | `Configuration` dataclass (`user_id`, `todo_category`, `task_maistro_role`) read from `RunnableConfig` or environment variables at run time. |
 | [langgraph.json](langgraph.json) | LangGraph CLI/API manifest: registers `task_maistro.py:graph` as the `task_maistro` assistant, points at `.env` for secrets, sets permissive CORS for local dev. |
 | [langgraph_client.py](langgraph_client.py) | Standalone CLI script (not used by the web UI) for talking to the LangGraph API directly from Python — create threads, send messages, inspect history/graphs. Useful for debugging the agent outside the browser. |
-| [index.html](index.html) | The entire frontend: a single-file HTML/CSS/vanilla-JS chat SPA ("TodoGPT") with login/register screens, a thread sidebar, and a chat pane. No build step, no framework. |
+| [frontend/index.html](frontend/index.html) | The entire frontend: a single-file HTML/CSS/vanilla-JS chat SPA ("TodoGPT") with login/register screens, a thread sidebar, and a chat pane. No build step, no framework. Lives in its own folder so Vercel's root-directory setting doesn't collide with the Python files at repo root. |
 | [requirements.txt](requirements.txt) | Python dependencies for the LangGraph API container. |
 | [Dockerfile](Dockerfile) | Builds the LangGraph API image; runs `langgraph dev` on port 2024 (mapped to host 8123). |
 | [docker-compose.yml](docker-compose.yml) | Orchestrates 4 services: `langgraph-redis`, `langgraph-postgres`, `langgraph-api`, `auth-api`. |
@@ -92,7 +92,7 @@ message-history checkpointer) to keep memory across threads/sessions for a given
 **Model:** `gemini-2.5-flash` via `langchain-google-genai`, temperature 0. The code
 comments explain this choice was for free-tier quota headroom vs. newer Gemini models.
 
-## Frontend (`index.html`)
+## Frontend (`frontend/index.html`)
 
 A dependency-free single HTML file (only external asset: Google Fonts + the `marked`
 CDN script for Markdown rendering). No React/Vue/build tooling.
@@ -128,7 +128,7 @@ docker compose up
 ```
 - LangGraph API → `http://localhost:8123` (from container port 2024)
 - Auth API → `http://localhost:8124` (from container port 8000)
-- Open `index.html` directly in a browser (or serve it — its `FRONTEND_ORIGIN` CORS
+- Open `frontend/index.html` directly in a browser (or serve it — its `FRONTEND_ORIGIN` CORS
   default in `docker-compose.yml` assumes `http://localhost:5500`, e.g. VS Code Live
   Server).
 
@@ -148,4 +148,4 @@ Required secrets in `.env` at the project root: a Google Generative AI API key
   up. `huggingfacehub_api_token` and `TAVILY_API_KEY` in `.env` don't appear to be
   referenced anywhere in the current code.
 - `langgraph_client.py` is a dev/debug utility, not part of the served app — it's not
-  invoked by `index.html` or any Dockerfile.
+  invoked by `frontend/index.html` or any Dockerfile.
